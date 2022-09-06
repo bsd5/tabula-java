@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.lang.Thread;
 import java.util.HashMap;
 import java.util.ListIterator;
 import java.lang.Float;
@@ -36,17 +37,28 @@ public class TableWithRulingLines extends Table {
             si.add(ce);
         }
 
-        List<List<Cell>> rowsOfCells = rowsOfCells(cells);
+        List<List<Cell>> rowsOfCells = rowsOfCells(cells); // Ok, this seems to work
         for (int i = 0; i < rowsOfCells.size(); i++) {
             List<Cell> row = rowsOfCells.get(i);
-
             Iterator<Cell> rowCells = row.iterator();
-            Cell cell = rowCells.next();
-            List<List<Cell>> others = rowsOfCells(
-                    si.contains(
-                            new Rectangle(cell.getBottom(), si.getBounds().getLeft(), cell.getLeft() - si.getBounds().getLeft(),
-                                    si.getBounds().getBottom() - cell.getBottom())
-                            ));
+            if (row.size() == 0){
+                System.err.format("Dis row is rong\n");
+                continue;
+            }
+            Cell cell = rowCells.next(); //This Fails!
+            System.err.format("C: x:%.1f y:%.1f t:%.1f b:%.1f\n", cell.getLeft(), cell.getY(), cell.getTop(), cell.getBottom());
+            Rectangle si_bounds = si.getBounds();
+            System.err.format("B: x:%.1f y:%.1f t:%.1f b:%.1f\n", si_bounds.getLeft(), si_bounds.getY(), si_bounds.getTop(), si_bounds.getBottom());
+            List<List<Cell>> others = rowsOfCells( // This usually works
+                si.contains(
+                    new Rectangle(
+                        cell.getBottom(), // Top
+                        si.getBounds().getLeft(), // Left
+                        cell.getLeft() - si.getBounds().getLeft(), // Width
+                        si.getBounds().getBottom() - cell.getBottom() // Height
+                    )
+                )
+            );
             int startColumn = 0;
             for (List<Cell> r: others) {
                 startColumn = Math.max(startColumn, r.size());
@@ -74,48 +86,45 @@ public class TableWithRulingLines extends Table {
     };
 
     private static List<List<Cell>> rowsOfCells(List<Cell> cells) {
+
         List<List<Cell>> rows = new ArrayList<>();
         if (cells.size() == 0){
             return rows;
         }
         List<Cell> firstRow = fetchFirstRow(cells);
 
+        if(firstRow.size() == 0){
+            return rows;
+        }
         int firstIndex = 0;
-        System.out.println("firstRow.size(): "+firstRow.size());
-
         Cell firstCell = firstRow.get(firstIndex);
         double rowTop = firstCell.getTop();
-        double rowBottom = firstCell.getBottom();
         double rowHeight = firstCell.getHeight();
         double midPointOffset = rowHeight/2;
         double midPoint = (rowTop+midPointOffset);
 
         while(!lineIncludesAll(midPoint, firstRow))
         {
-
             midPointOffset = midPointOffset/2;
             midPoint = rowTop+midPointOffset;
             if (midPointOffset < 1){
                 System.out.println("midPointOffset < 1 !!!");
                 System.exit(0);
-
             }
         }
 
-        // = "%-3.3s";  // fixed size 3 characters, left aligned
-
-        // System.out.format("midPointOffset %.2f\n", midPointOffset);
-        // System.out.format("midPoint %.2f\n\n", midPoint);
         double shortestCellHeight = 10000;
         double midline = midPoint;
         double nextMidline=0;
         double cellMidline =0;
-        double midlineDelta=0;
         String cellText = "";
-        String cellDebugText = "";
-        for(int j = 0; j <10; j++){
-            // System.out.format("\nmidline: %.2f\n\ttext: ", midline);
-
+        double lastCellBottom = 0;
+        for(Cell mb: cells){
+            if (mb.getBottom() > lastCellBottom){
+                lastCellBottom = mb.getBottom();
+            }
+        }
+        for(int j = 0; (midline < lastCellBottom); j++){
             List<Cell> currentRow = new ArrayList<>();
             Cell currentCell;
             for(int i = 0; i < cells.size(); i++){
@@ -125,7 +134,6 @@ public class TableWithRulingLines extends Table {
                 if (currentCell.getBottom() > midline){
                     if (currentCell.getTop() < midline){
                         if(currentCell.getWidth() >2){
-                            midlineDelta = (midline-cellMidline);
                             currentRow.add(currentCell);
                             if(currentCell.getHeight() < shortestCellHeight){
                                 shortestCellHeight = currentCell.getHeight();
@@ -137,18 +145,23 @@ public class TableWithRulingLines extends Table {
             }
             /* next_given_midline = shortestCell.top+(shortestCell.height/2); */
             currentRow.sort(X_FIRST_CELL_COMPARATOR);
-            for(Cell sortedCell: currentRow){
-                cellText = sortedCell.getText().trim();
-                System.out.format("%16s", cellText);
+            if(currentRow.size()>0){
+                for(Cell sortedCell: currentRow){
+                    cellText = sortedCell.getText().trim();
+                    System.out.format("%16s", cellText);
+                }
+                System.out.println("\n");
+            } else {
+                System.err.println("MTROW");
             }
-            System.out.println("\n");
-            
             rows.add(currentRow);
             midline = nextMidline;
+            if(midline > lastCellBottom){
+                break;
+            }
             shortestCellHeight = 1000;
 
         }
-        System.out.println("\n\n**********************************\n\tRETURNING ROWS:\n"+rows+"\n***************************************");
 
         return rows;
     }
@@ -168,18 +181,37 @@ public class TableWithRulingLines extends Table {
     private static List<Cell> fetchFirstRow(List<Cell> allCells){
         List<Cell> firstRow = new ArrayList<Cell>();
         double previousX = 0;
+        String cellDebugText;
         for (Cell cell : allCells) {
             if (cell.getX() < previousX) {
                 if(firstRow.get(0).getHeight() < 5){
                     firstRow.clear();
                 }
                 else{
+                    for(Cell maybeYuk: firstRow){
+                        if ((maybeYuk.getHeight() >=5) && (maybeYuk.getWidth() >5)){
+                            // System.out.println("");
+                            return firstRow;
+                        }
+                    }
+                    firstRow.clear();
+                    System.err.println("Returning empty row");
                     return firstRow;
                 }
             }
+            cellDebugText = String.format("x:%.0f y:%.0f h:%.0f w:%.0f", cell.getX(), cell.getY(), cell.getHeight(), cell.getWidth());
+            // System.out.format("| %16s | %16s |", cell.getText(), cellDebugText);
             firstRow.add(cell);
             previousX = cell.getX();
         }
+        for(Cell maybeYuk: firstRow){
+            if ((maybeYuk.getHeight() >=5) && (maybeYuk.getWidth() >5)){
+                // System.out.println("");
+                return firstRow;
+            }
+        }
+        firstRow.clear();
+        System.out.println("Returning empty row");
         return firstRow;
     }
 
