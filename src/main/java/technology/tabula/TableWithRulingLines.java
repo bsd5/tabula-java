@@ -42,20 +42,16 @@ public class TableWithRulingLines extends Table {
             List<Cell> row = rowsOfCells.get(i);
             Iterator<Cell> rowCells = row.iterator();
             if (row.size() == 0){
-                System.err.format("Dis row is rong\n");
                 continue;
             }
-            Cell cell = rowCells.next(); //This Fails!
-            System.err.format("C: x:%.1f y:%.1f t:%.1f b:%.1f\n", cell.getLeft(), cell.getY(), cell.getTop(), cell.getBottom());
-            Rectangle si_bounds = si.getBounds();
-            System.err.format("B: x:%.1f y:%.1f t:%.1f b:%.1f\n", si_bounds.getLeft(), si_bounds.getY(), si_bounds.getTop(), si_bounds.getBottom());
-            List<List<Cell>> others = rowsOfCells( // This usually works
+            Cell cell = rowCells.next();
+            List<List<Cell>> others = rowsOfCells(
                 si.contains(
                     new Rectangle(
-                        cell.getBottom(), // Top
-                        si.getBounds().getLeft(), // Left
-                        cell.getLeft() - si.getBounds().getLeft(), // Width
-                        si.getBounds().getBottom() - cell.getBottom() // Height
+                        cell.getBottom(),
+                        si.getBounds().getLeft(),
+                        cell.getLeft() - si.getBounds().getLeft(),
+                        si.getBounds().getBottom() - cell.getBottom()
                     )
                 )
             );
@@ -143,7 +139,6 @@ public class TableWithRulingLines extends Table {
                     }
                 }
             }
-            /* next_given_midline = shortestCell.top+(shortestCell.height/2); */
             currentRow.sort(X_FIRST_CELL_COMPARATOR);
             if(currentRow.size()>0){
                 for(Cell sortedCell: currentRow){
@@ -181,7 +176,6 @@ public class TableWithRulingLines extends Table {
     private static List<Cell> fetchFirstRow(List<Cell> allCells){
         List<Cell> firstRow = new ArrayList<Cell>();
         double previousX = 0;
-        String cellDebugText;
         for (Cell cell : allCells) {
             if (cell.getX() < previousX) {
                 if(firstRow.get(0).getHeight() < 5){
@@ -190,7 +184,6 @@ public class TableWithRulingLines extends Table {
                 else{
                     for(Cell maybeYuk: firstRow){
                         if ((maybeYuk.getHeight() >=5) && (maybeYuk.getWidth() >5)){
-                            // System.out.println("");
                             return firstRow;
                         }
                     }
@@ -199,14 +192,11 @@ public class TableWithRulingLines extends Table {
                     return firstRow;
                 }
             }
-            cellDebugText = String.format("x:%.0f y:%.0f h:%.0f w:%.0f", cell.getX(), cell.getY(), cell.getHeight(), cell.getWidth());
-            // System.out.format("| %16s | %16s |", cell.getText(), cellDebugText);
             firstRow.add(cell);
             previousX = cell.getX();
         }
         for(Cell maybeYuk: firstRow){
             if ((maybeYuk.getHeight() >=5) && (maybeYuk.getWidth() >5)){
-                // System.out.println("");
                 return firstRow;
             }
         }
@@ -214,74 +204,4 @@ public class TableWithRulingLines extends Table {
         System.out.println("Returning empty row");
         return firstRow;
     }
-
-
-    // /*
-    // * Step 1. gather first row: we _know_ they're on the same row because they share a top.
-    // * Step 2. Binary search(ish) through the height of the first cell by halving until all cells
-    // *   in the row are included. * This is 1/2 your row hight.
-    // * Step 3. Previous midline + row height is the offset into the middle of each row
-    // *  - only works for even multiples of the first row height;
-    // *
-    // */
-    // private static double[] getRowMidlineSet(List<Cell> firstRow){
-    //     System.out.println("Getting midline set for row:");
-    //     System.out.println(firstRow);
-
-    //     int firstIndex = 0;
-    //     System.out.println("firstRow.size(): "+firstRow.size());
-
-    //     Cell firstCell = firstRow.get(firstIndex);
-    //     double rowTop = firstCell.getTop();
-    //     double rowBottom = firstCell.getBottom();
-    //     double rowHeight = firstCell.getHeight();
-    //     double midPointOffset = rowHeight/2;
-    //     double midPoint = (rowTop+midPointOffset);
-    //     System.out.println("\nTrying first midpoint:  top:"+rowTop+ " bottom: "+rowBottom+" height: "+rowHeight+" midpoint: "+midPoint);
-
-    //     while(!lineIncludesAll(midPoint, firstRow))
-    //     {
-    //         System.out.println("Trying next midpoint:  top:"+rowTop+ " height: "+rowHeight+" midpoint: "+midPoint);
-
-    //         midPointOffset = midPointOffset/2;
-    //         midPoint = rowTop+midPointOffset;
-    //     }
-    //     double[] midPointSet = new double[3];
-    //     midPointSet[0] = rowHeight;
-    //     midPointSet[1] = rowTop;
-    //     midPointSet[2] = midPointOffset;
-
-    //     return midPointSet;
-    // }
-
-
-
-    // private static List<Cell> cellsOnRow(double midline, List<Cell> cells){
-    //     List<Cell> cellsOnRowMidline = new ArrayList<>();
-    //     System.out.println("\nFinding cells on row for midline "+midline);
-    //     System.out.println("cells.size()"+cells.size());
-
-    //     System.out.println("\n\n\nCells:"+cells+"\n\n\n");
-
-
-    //     Cell cell;
-    //     for(int cellIndex=0; cellIndex < cells.size(); cellIndex++){
-    //         System.out.println("cellIndex="+cellIndex);
-    //         cell = cells.get(cellIndex);
-    //         System.out.println("\nCell: "+ cell);
-    //         if (cellOnRow(midline, cell)){
-    //             System.out.println("\tAdding: "+ cell);
-    //             cellsOnRowMidline.add(cell);
-    //         }
-    //         else{
-    //             System.out.println("\tCell not on midline");
-    //         }
-    //     }
-    //     System.out.println("Returning cellsOnRowMidline of length "+cellsOnRowMidline.size());
-
-    //     return cellsOnRowMidline;
-    // }
- /* Post-processing:
-    * if all the cells in the first or last column are blank when squished, delete the column
-    */
 }
