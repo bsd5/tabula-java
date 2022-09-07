@@ -10,9 +10,9 @@ import java.util.*;
  *
  */
 public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
-    
+
     private static final float MAGIC_HEURISTIC_NUMBER = 0.65f;
-    
+
     private static final Comparator<Point2D> Y_FIRST_POINT_COMPARATOR = (point1, point2) -> {
         int compareY = compareRounded(point1.getY(), point2.getY());
         if (compareY == 0) {
@@ -20,7 +20,7 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
         }
         return compareY;
     };
-    
+
     private static final Comparator<Point2D> X_FIRST_POINT_COMPARATOR = (point1, point2) -> {
         int compareX = compareRounded(point1.getX(), point2.getX());
         if (compareX == 0) {
@@ -35,12 +35,12 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
 
         return Float.compare(d1Rounded, d2Rounded);
     }
-    
+
     @Override
     public List<Table> extract(Page page) {
         return extract(page, page.getRulings());
     }
-    
+
     /**
      * Extract a list of Table from page using rulings as separators
      */
@@ -48,7 +48,7 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
         // split rulings into horizontal and vertical
         List<Ruling> horizontalR = new ArrayList<>();
         List<Ruling> verticalR = new ArrayList<>();
-        
+
         for (Ruling r: rulings) {
             if (r.horizontal()) {
                 horizontalR.add(r);
@@ -59,10 +59,10 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
         }
         horizontalR = Ruling.collapseOrientedRulings(horizontalR);
         verticalR = Ruling.collapseOrientedRulings(verticalR);
-        
+
         List<Cell> cells = findCells(horizontalR, verticalR);
         List<Rectangle> spreadsheetAreas = findSpreadsheetsFromCells(cells);
-        
+
         List<Table> spreadsheets = new ArrayList<>();
         for (Rectangle area: spreadsheetAreas) {
 
@@ -87,26 +87,26 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
                     verticalOverlappingRulings.add(vr);
                 }
             }
-                        
+
             TableWithRulingLines t = new TableWithRulingLines(area, overlappingCells, horizontalOverlappingRulings, verticalOverlappingRulings, this, page.getPageNumber());
             spreadsheets.add(t);
         }
         Utils.sort(spreadsheets, Rectangle.ILL_DEFINED_ORDER);
         return spreadsheets;
     }
-    
+
     public boolean isTabular(Page page) {
-        
-        // if there's no text at all on the page, it's not a table 
+
+        // if there's no text at all on the page, it's not a table
         // (we won't be able to do anything with it though)
         if (page.getText().isEmpty()){
-            return false; 
+            return false;
         }
 
         // get minimal region of page that contains every character (in effect,
         // removes white "margins")
         Page minimalRegion = page.getArea(Utils.bounds(page.getText()));
-        
+
         List<? extends Table> tables = new SpreadsheetExtractionAlgorithm().extract(minimalRegion);
         if (tables.isEmpty()) {
             return false;
@@ -114,7 +114,7 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
         Table table = tables.get(0);
         int rowsDefinedByLines = table.getRowCount();
         int colsDefinedByLines = table.getColCount();
-        
+
         tables = new BasicExtractionAlgorithm().extract(minimalRegion);
         if (tables.isEmpty()) {
             return false;
@@ -122,19 +122,19 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
         table = tables.get(0);
         int rowsDefinedWithoutLines = table.getRowCount();
         int colsDefinedWithoutLines = table.getColCount();
-        
+
         float ratio = (((float) colsDefinedByLines / colsDefinedWithoutLines) +
                 ((float) rowsDefinedByLines / rowsDefinedWithoutLines)) / 2.0f;
-        
+
         return ratio > MAGIC_HEURISTIC_NUMBER && ratio < (1 / MAGIC_HEURISTIC_NUMBER);
     }
-    
+
     public static List<Cell> findCells(List<Ruling> horizontalRulingLines, List<Ruling> verticalRulingLines) {
         List<Cell> cellsFound = new ArrayList<>();
         Map<Point2D, Ruling[]> intersectionPoints = Ruling.findIntersections(horizontalRulingLines, verticalRulingLines);
         List<Point2D> intersectionPointsList = new ArrayList<>(intersectionPoints.keySet());
         intersectionPointsList.sort(Y_FIRST_POINT_COMPARATOR);
-        
+
         for (int i = 0; i < intersectionPointsList.size(); i++) {
             Point2D topLeft = intersectionPointsList.get(i);
             Ruling[] hv = intersectionPoints.get(topLeft);
@@ -163,7 +163,7 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
                         continue;
                     }
                     Point2D btmRight = new Point2D.Float((float) yPoint.getX(), (float) xPoint.getY());
-                    if (intersectionPoints.containsKey(btmRight) 
+                    if (intersectionPoints.containsKey(btmRight)
                             && intersectionPoints.get(btmRight)[0].equals(intersectionPoints.get(xPoint)[0])
                             && intersectionPoints.get(btmRight)[1].equals(intersectionPoints.get(yPoint)[1])) {
                             cellsFound.add(new Cell(topLeft, btmRight));
@@ -172,14 +172,14 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
                 }
             }
         }
-        
-        // TODO create cells for vertical ruling lines with aligned endpoints at the top/bottom of a grid 
+
+        // TODO create cells for vertical ruling lines with aligned endpoints at the top/bottom of a grid
         // that aren't connected with an horizontal ruler?
         // see: https://github.com/jazzido/tabula-extractor/issues/78#issuecomment-41481207
-        
+
         return cellsFound;
     }
-    
+
     public static List<Rectangle> findSpreadsheetsFromCells(List<? extends Rectangle> cells) {
         // via: http://stackoverflow.com/questions/13746284/merging-multiple-adjacent-rectangles-into-one-polygon
         List<Rectangle> rectangles = new ArrayList<>();
@@ -187,7 +187,7 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
         Map<Point2D, Point2D> edgesH = new HashMap<>();
         Map<Point2D, Point2D> edgesV = new HashMap<>();
         int i = 0;
-        
+
         cells = new ArrayList<>(new HashSet<>(cells));
 
         Utils.sort(cells, Rectangle.ILL_DEFINED_ORDER);
@@ -202,14 +202,14 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
                 }
             }
         }
-        
+
         // X first sort
         List<Point2D> pointsSortX = new ArrayList<>(pointSet);
         pointsSortX.sort(X_FIRST_POINT_COMPARATOR);
         // Y first sort
         List<Point2D> pointsSortY = new ArrayList<>(pointSet);
         pointsSortY.sort(Y_FIRST_POINT_COMPARATOR);
-        
+
         while (i < pointSet.size()) {
             float currY = (float) pointsSortY.get(i).getY();
             while (i < pointSet.size() && Utils.feq(pointsSortY.get(i).getY(), currY)) {
@@ -218,7 +218,7 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
                 i += 2;
             }
         }
-        
+
         i = 0;
         while (i < pointSet.size()) {
             float currX = (float) pointsSortX.get(i).getX();
@@ -228,7 +228,7 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
                 i += 2;
             }
         }
-        
+
         // Get all the polygons
         List<List<PolygonVertex>> polygons = new ArrayList<>();
         Point2D nextVertex;
@@ -237,7 +237,7 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
             Point2D first = edgesH.keySet().iterator().next();
             polygon.add(new PolygonVertex(first, Direction.HORIZONTAL));
             edgesH.remove(first);
-            
+
             while (true) {
                 PolygonVertex curr = polygon.get(polygon.size() - 1);
                 PolygonVertex lastAddedVertex;
@@ -259,14 +259,14 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
                     break;
                 }
             }
-            
+
             for (PolygonVertex vertex: polygon) {
                 edgesH.remove(vertex.point);
                 edgesV.remove(vertex.point);
             }
             polygons.add(polygon);
         }
-        
+
         // calculate grid-aligned minimum area rectangles for each found polygon
         for(List<PolygonVertex> poly: polygons) {
             float top = java.lang.Float.MAX_VALUE;
@@ -281,43 +281,43 @@ public class SpreadsheetExtractionAlgorithm implements ExtractionAlgorithm {
             }
             rectangles.add(new Rectangle(top, left, right - left, bottom - top));
         }
-        
+
         return rectangles;
     }
-    
+
     @Override
     public String toString() {
         return "lattice";
     }
-    
+
     private enum Direction {
         HORIZONTAL,
         VERTICAL
     }
-    
+
      static class PolygonVertex {
         Point2D point;
         Direction direction;
-        
+
         public PolygonVertex(Point2D point, Direction direction) {
             this.direction = direction;
             this.point = point;
         }
-        
+
         @Override
         public boolean equals(Object other) {
-            if (this == other) 
+            if (this == other)
                 return true;
             if (!(other instanceof PolygonVertex))
                 return false;
             return this.point.equals(((PolygonVertex) other).point);
         }
-        
+
         @Override
         public int hashCode() {
             return this.point.hashCode();
         }
-        
+
         @Override
         public String toString() {
             return String.format("%s[point=%s,direction=%s]", this.getClass().getName(), this.point.toString(), this.direction.toString());

@@ -37,7 +37,7 @@ public class TableWithRulingLines extends Table {
             si.add(ce);
         }
 
-        List<List<Cell>> rowsOfCells = rowsOfCells(cells); // Ok, this seems to work
+        List<List<Cell>> rowsOfCells = rowsOfCells(cells);
         for (int i = 0; i < rowsOfCells.size(); i++) {
             List<Cell> row = rowsOfCells.get(i);
             Iterator<Cell> rowCells = row.iterator();
@@ -81,6 +81,14 @@ public class TableWithRulingLines extends Table {
         return compareX;
     };
 
+    /* Cell midline based row gathering
+     *
+     *  Find the vertical center of the shortest cell in a row, and use it to match the
+     *  other cells on the same row.
+     *
+     *  TODO: Optionally join horizontally merged cells based on being on the horizontal center
+     *  of a given column
+     */
     private static List<List<Cell>> rowsOfCells(List<Cell> cells) {
 
         List<List<Cell>> rows = new ArrayList<>();
