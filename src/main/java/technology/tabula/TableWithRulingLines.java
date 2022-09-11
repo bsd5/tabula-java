@@ -38,32 +38,40 @@ public class TableWithRulingLines extends Table {
         }
 
         List<List<Cell>> rowsOfCells = rowsOfCells(cells);
-        for (int i = 0; i < rowsOfCells.size(); i++) {
-            List<Cell> row = rowsOfCells.get(i);
+        for (int rowIndex = 0; rowIndex < rowsOfCells.size(); rowIndex++) {
+            List<Cell> row = rowsOfCells.get(rowIndex);
             Iterator<Cell> rowCells = row.iterator();
             if (row.size() == 0){
                 continue;
             }
+
             Cell cell = rowCells.next();
-            List<List<Cell>> others = rowsOfCells(
-                si.contains(
-                    new Rectangle(
-                        cell.getBottom(),
-                        si.getBounds().getLeft(),
-                        cell.getLeft() - si.getBounds().getLeft(),
-                        si.getBounds().getBottom() - cell.getBottom()
-                    )
-                )
-            );
+
+            List<List<Cell>> others = getOtherRows(cell);
+
             int startColumn = 0;
             for (List<Cell> r: others) {
                 startColumn = Math.max(startColumn, r.size());
             }
-            this.add(cell, i, startColumn++);
+            this.add(cell, rowIndex, startColumn++);
             while (rowCells.hasNext()) {
-                this.add(rowCells.next(), i, startColumn++);
+                this.add(rowCells.next(), rowIndex, startColumn++);
             }
         }
+    }
+
+    private List<List<Cell>> getOtherRows(Cell cell) {
+        List<List<Cell>> others = rowsOfCells(
+            si.contains(
+                new Rectangle(
+                    cell.getBottom(),
+                    si.getBounds().getLeft(),
+                    cell.getLeft() - si.getBounds().getLeft(),
+                    si.getBounds().getBottom() - cell.getBottom()
+                )
+            )
+        );
+        return others;
     }
     private static int compareRounded(double d1, double d2) {
         float d1Rounded = Utils.round(d1, 2);

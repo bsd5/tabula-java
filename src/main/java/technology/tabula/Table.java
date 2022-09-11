@@ -19,14 +19,9 @@ public class Table extends Rectangle {
 		this(extractionAlgorithm.toString());
 	}
 
-	private final String extractionMethod;
-
-	private int rowCount = 0;
-	private int colCount = 0;
-	private int pageNumber = 0;
-
-	/* visible for testing */ final TreeMap<CellPosition, RectangularTextContainer> cells = new TreeMap<>();
-
+	/* visible for testing */
+	final TreeMap<CellPosition, RectangularTextContainer> cells = new TreeMap<>();
+	/** Public Accessors **/
 	public int getRowCount() { return rowCount; }
 	public int getColCount() { return colCount; }
 	public int getPageNumber() { return pageNumber; }
@@ -36,42 +31,86 @@ public class Table extends Rectangle {
 
 	public void add(RectangularTextContainer chunk, int row, int col) {
 		this.merge(chunk);
-		
+
 		rowCount = Math.max(rowCount, row + 1);
 		colCount = Math.max(colCount, col + 1);
-		
+
 		CellPosition cp = new CellPosition(row, col);
-		
+
 		RectangularTextContainer old = cells.get(cp);
 		if (old != null) chunk.merge(old);
 		cells.put(cp, chunk);
 
 		this.memoizedRows = null;
 	}
-
-	private List<List<RectangularTextContainer>> memoizedRows = null;
-
 	public List<List<RectangularTextContainer>> getRows() {
 		if (this.memoizedRows == null) this.memoizedRows = computeRows();
 		return this.memoizedRows;
 	}
 
-	private List<List<RectangularTextContainer>> computeRows() {
-		List<List<RectangularTextContainer>> rows = new ArrayList<>();
-		for (int i = 0; i < rowCount; i++) {
-			List<RectangularTextContainer> lastRow = new ArrayList<>();
-			rows.add(lastRow);
-			for (int j = 0; j < colCount; j++) {
-				RectangularTextContainer cell = cells.get(new CellPosition(i,j)); // JAVA_8 use getOrDefault()
-				lastRow.add(cell != null ? cell : TextChunk.EMPTY);
-			}
-		}
-		return rows;
-	}
-	
 	public RectangularTextContainer getCell(int i, int j) {
 		RectangularTextContainer cell = cells.get(new CellPosition(i,j)); // JAVA_8 use getOrDefault()
 		return cell != null ? cell : TextChunk.EMPTY;
+	}
+
+	/***** Private Attributes ******/
+	private final String extractionMethod;
+
+	private int rowCount = 0;
+	private int colCount = 0;
+	private int pageNumber = 0;
+	private List<RectangularTextContainer> columnHeaders = new ArrayList<>();
+
+	/***** Private Methods ******/
+	private List<List<RectangularTextContainer>> memoizedRows = null;
+
+
+	private List<List<RectangularTextContainer>> computeRows() {
+		List<List<RectangularTextContainer>> rows = new ArrayList<>();
+
+		RectangularTextContainer lastCell = cells.get(new CellPosition(0, 0));
+		System.out.println("lastCell is "+ lastCell);
+
+		columnHeaders = getColumnHeaders();
+		for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+
+			List<RectangularTextContainer> lastRow = new ArrayList<>();
+			rows.add(lastRow);
+			for (int columnIndex = 0; columnIndex < colCount; columnIndex++) {
+				RectangularTextContainer columnHeader = columnHeaders.get(columnIndex);
+
+				RectangularTextContainer cell = getCell(rowIndex, columnIndex); // JAVA_8 use getOrDefault()
+
+				/**** Detect column members here? Perhaps the cell can look for it's row? Look at the last
+				 * cell and see if it's in the column still */
+				if(cell == TextChunk.EMPTY){
+					/*  check to see if the previous cell is in the current column.
+					  * If so the current cell is continuing the last */
+					if(cellInColumn(lastCell, columnHeader)){
+						cell = lastCell;
+					}
+				}
+				lastRow.add(cell);
+				lastCell = cell;
+			}
+
+		}
+		return rows;
+	}
+
+	/* We're assuming that the header/first row defines the columns so none are null */
+	private List<RectangularTextContainer> getColumnHeaders(){
+		List<RectangularTextContainer> headerRow = new ArrayList<>();
+
+		for (int columnIndex = 0; columnIndex < colCount; columnIndex++) {
+			headerRow.add(cells.get(new CellPosition(0, columnIndex)));
+		}
+		return headerRow;
+	}
+
+	private boolean cellInColumn(RectangularTextContainer cell, RectangularTextContainer columnHeader) {
+		double columnMidline = columnHeader.getCenterX();
+		return (columnMidline > cell.getLeft() && columnMidline < cell.getRight());
 	}
 
 }
